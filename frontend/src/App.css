@@ -1,0 +1,103 @@
+/* Center the content with a gradient background */
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh; /* Full viewport height */
+  text-align: center;
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  font-family: 'Arial', sans-serif;
+  color: #333;
+  padding: 20px;
+}
+
+/* Styling the title */
+.dashboard-container h1 {
+  font-size: 2.5rem;
+  color: #222;
+  margin-bottom: 20px;
+}
+
+/* Input field styling */
+.search-input {
+  width: 300px;
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 2px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+/* Styling buttons */
+.filters button {
+  background-color: #4caf50; /* Default background color */
+  color: white; /* Default text color */
+  border: none;
+  padding: 10px 15px;
+  text-align: center;
+  font-size: 16px;
+  margin: 5px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.filters button:hover {
+  background-color: #45a049; /* Slightly darker green on hover */
+}
+
+.filters button:active {
+  background-color: white; /* Background changes to white when clicked */
+  color: #4caf50; /* Text changes to green to ensure readability */
+  border: 2px solid #4caf50; /* Optional: add a green border for emphasis */
+}
+
+/* Styling system notes */
+.system-notes {
+  margin-top: 20px;
+}
+
+.system-notes h2 {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.system-notes ul {
+  list-style-type: none;
+  padding: 0;
+  font-size: 1.2rem;
+}
+
+.system-notes ul li {
+  margin: 10px 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dashboard-container h1 {
+      font-size: 2rem;
+  }
+
+  .filters button {
+      padding: 8px 12px;
+      font-size: 14px;
+  }
+
+  .search-input {
+      width: 90%;
+  }
+}
+.feature-scroller {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  box-shadow: 0px -2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  padding: 10px;
+  display: flex;
+  overflow-x: auto;
+}

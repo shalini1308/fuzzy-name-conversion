@@ -1,0 +1,20 @@
+blinker==1.9.0
+click==8.1.7
+Flask==3.1.0
+Flask-Cors==5.0.0
+fuzzywuzzy==0.18.0
+googletrans==4.0.0-rc1  # Required for translation
+itsdangerous==2.2.0
+Jinja2==3.1.4
+Levenshtein==0.26.1  # For fuzzy matching
+MarkupSafe==3.0.2
+numpy==2.1.3
+pandas==2.2.3
+python-dateutil==2.9.0.post0
+python-Levenshtein==0.26.1
+pytz==2024.2
+RapidFuzz==3.10.1  # Alternative to fuzzywuzzy, keep both if needed
+six==1.16.0
+SQLAlchemy==2.0.20  # Needed for database connection
+tzdata==2024.2
+Werkzeug==3.1.3

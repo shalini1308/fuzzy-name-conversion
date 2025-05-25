@@ -1,0 +1,508 @@
+import React, { useState, useEffect, useRef } from "react";
+import { searchName, suggestName, addNewRecord } from "../services/api";
+import { Card, CardHeader } from "./ui/Card";
+import { Input } from "./ui/Input";
+import { Button } from "./ui/Button";
+import VoiceSearchButton from "./ui/VoiceSearchButton";
+import {
+    Filter,
+    ChevronDown,
+    ChevronUp,
+} from "lucide-react";
+import ViewDetailsModal from "./ui/ViewDetailsModal";
+import leftLogo from "/home/harisudhan/Documents/new fuzzy/fuzzy-name-matching-system/frontend/src/components/assets/mp logo.png";
+import rightLogo from "/home/harisudhan/Documents/new fuzzy/fuzzy-name-matching-system/frontend/src/components/assets/mp police logo.png";
+
+const PoliceDashboard = () => {
+    const [inputName, setInputName] = useState("");
+    const [searchResults, setSearchResults] = useState([]);
+    const [noMatchFound, setNoMatchFound] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [activeFilters, setActiveFilters] = useState({
+        location: "All Stations",
+        casetype: "All Types",
+        gender: "All Genders",
+    });
+    const [showFilters, setShowFilters] = useState(false);
+    const [nameSuggestions, setNameSuggestions] = useState([]);
+    const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedRecord, setSelectedRecord] = useState(null);
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [newRecord, setNewRecord] = useState({
+        name: "",
+        age: "",
+        location: "",
+        caseType: "",
+        gender: "",
+        confidence: "",
+    });
+
+    const RESULTS_PER_PAGE = 10;
+
+    const filterOptions = {
+        locations: ["All Stations", "Indore", "Bhopal", "Gwalior", "Sagar", "Dewas", "Ujjain", "Jabalpur", "Rewa"],
+        caseTypes: ["All Types", "Criminal", "Witness", "Suspect", "Victim"],
+        genders: [
+            { value: "All Genders", label: "All Genders" },
+            { value: "0", label: "Male" },
+            { value: "1", label: "Female" },
+            { value: "2", label: "Other" },
+        ],
+        addFormGenders: [
+            { value: "0", label: "Male" },
+            { value: "1", label: "Female" },
+            { value: "2", label: "Other" },
+        ]
+    };
+
+
+    const handleSearch = async () => {
+        if (!inputName.trim()) {
+            alert("Please enter a name to search.");
+            return;
+        }
+         setIsLoading(true);
+         setNoMatchFound(false);
+
+        try {
+            const results = await searchName(inputName);
+            const filteredResults = results.filter((record) => {
+                const matchesLocation =
+                    activeFilters.location === "All Stations" ||
+                    record.location.includes(activeFilters.location);
+                const matchesCaseType =
+                    activeFilters.caseType === "All Types" ||
+                    record.caseType === activeFilters.caseType;
+                const matchesGender =
+                     activeFilters.gender === "All Genders" ||
+                    (activeFilters.gender !== "All Genders" && String(record.gender) === activeFilters.gender)
+
+
+                return matchesLocation && matchesCaseType && matchesGender;
+            });
+
+           const exactMatchFound = filteredResults.some(record => record.name.toLowerCase() === inputName.toLowerCase());
+
+            setSearchResults(filteredResults);
+            setCurrentPage(1);
+
+            if (!exactMatchFound && filteredResults.length === 0) {
+                    setNoMatchFound(true);
+                 }
+
+              if(!exactMatchFound && filteredResults.length > 0)
+                {
+                 setNoMatchFound(true);
+                }
+          
+
+        } catch (error) {
+            console.error("Search Error:", error.message);
+            alert("Failed to fetch search results. Please try again later.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleInputChange = async (e) => {
+        const query = e.target.value;
+        setInputName(query);
+
+        if (query.length > 2) {
+            setIsSuggestionsLoading(true);
+            try {
+                const suggestions = await suggestName(query);
+                setNameSuggestions(suggestions);
+            } catch (error) {
+                console.error("Error fetching suggestions:", error);
+            } finally {
+                setIsSuggestionsLoading(false);
+            }
+        } else {
+            setNameSuggestions([]);
+        }
+    };
+
+    const handleVoiceInput = async (transcript) => {
+        setInputName(transcript);
+        try {
+            setIsLoading(true);
+            const results = await searchName(transcript);
+            setSearchResults(results);
+        } catch (error) {
+            console.error("Voice Search Error:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
+    const handleSuggestionClick = (suggestion) => {
+        setInputName(suggestion);
+        setNameSuggestions([]);
+    };
+
+    const handleAddRecord = async () => {
+        if (!newRecord.name || !newRecord.age || !newRecord.location || !newRecord.caseType || !newRecord.gender) {
+            alert("Please fill out all required fields, including gender.");
+            return;
+        }
+
+        try {
+            const addedRecord = await addNewRecord(newRecord);
+            setSearchResults((prev) => [addedRecord, ...prev]);
+            alert("Record added successfully.");
+            setShowAddForm(false);
+            setNewRecord({ name: "", age: "", location: "", caseType: "", gender: "", confidence: "" });
+        } catch (error) {
+            console.error("Error adding new record:", error);
+            alert("Failed to add record. Please try again later.");
+        }
+    };
+
+    const handleViewDetails = (record) => {
+        setSelectedRecord(record);
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setSelectedRecord(null);
+    };
+
+    const handleFilterChange = (type, value) => {
+        setActiveFilters((prev) => ({
+            ...prev,
+            [type]: value,
+        }));
+    };
+
+    const paginatedResults = searchResults.slice(
+        (currentPage - 1) * RESULTS_PER_PAGE,
+        currentPage * RESULTS_PER_PAGE
+    );
+
+    const totalPages = Math.ceil(searchResults.length / RESULTS_PER_PAGE) || 1;
+
+    const featureBarRef = useRef(null);
+    const [isScrolling, setIsScrolling] = useState(true);
+    const [keywords, setKeywords] = useState([
+        "Fuzzy Matching system", "Transliteration Standardization", "Phonetics Matching", "Voice Search", "Semantics"
+    ]);
+
+
+    useEffect(() => {
+        const bar = featureBarRef.current;
+
+        if (bar) {
+            let animationFrameId;
+
+            const animateScroll = () => {
+                if (isScrolling) {
+                    bar.scrollLeft += 0.5; // Adjust speed
+
+                    if (bar.scrollLeft >= bar.scrollWidth - bar.offsetWidth) {
+                        bar.scrollLeft = 0;
+                    }
+                }
+                animationFrameId = requestAnimationFrame(animateScroll);
+            };
+
+            animateScroll();
+
+            return () => cancelAnimationFrame(animationFrameId);
+        }
+    }, [isScrolling]);
+
+    const handleMouseEnter = () => setIsScrolling(false);
+    const handleMouseLeave = () => setIsScrolling(true);
+
+    return (
+        <div className="min-h-screen w-full flex flex-col items-center bg-gradient-to-br from-pink-100 via-white to-blue-100">
+            {/* Banner Section */}
+            <div className="relative w-full bg-gradient-to-r from-gray-300 via-indigo-700 to-gray-300 h-36 flex items-center justify-between px-8 shadow-lg rounded-b-lg">
+                <img src={leftLogo} alt="Left Logo" className="h-24 w-auto" />
+                <div className="text-center">
+                    <h1 className="text-4xl font-bold text-black">MPPDS</h1>
+                    <p className="text-lg font-bold italic text-grey-200 mt-1">
+                        The Integrated Fuzzy Name Matching System
+                    </p>
+                </div>
+                <img src={rightLogo} alt="Right Logo" className="h-24 w-auto" />
+            </div>
+            <div className="w-full bg-white p-4 shadow-md mt-4 overflow-x-hidden">
+                <div
+                    className="whitespace-nowrap" // Required to prevent wrapping
+                    ref={featureBarRef}
+                    style={{
+                        fontSize: "1.2rem",
+                        fontWeight: "500",
+                        animation: "scroll 15s linear infinite", // Adjust duration as needed
+                        display: "inline-block", // Treat the inner div as a block element for animation
+                    }}
+                >
+                    {keywords.map((keyword, index) => (
+                        <span key={index} className="mr-4 text-gray-700">
+                            {keyword}
+                        </span>
+                    ))}
+                </div>
+            </div>
+
+            <div className="w-full max-w-7xl px-4 py-8">
+                {/* Search Section */}
+                <Card className="w-full shadow-xl border border-indigo-100">
+                    <CardHeader className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-indigo-900">
+                                Name Search & Cross-Referencing for Criminal
+                            </h2>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowFilters(!showFilters)}
+                                className="flex items-center hover:bg-indigo-500"
+                            >
+                                <Filter className="mr-2 h-4 w-4" />
+                                Filters
+                                {showFilters ? (
+                                    <ChevronUp className="ml-2 h-4 w-4" />
+                                ) : (
+                                    <ChevronDown className="ml-2 h-4 w-4" />
+                                )}
+                            </Button>
+                        </div>
+
+                        {/* Filter Options */}
+                        {showFilters && (
+                            <div className="mt-4 space-y-4 bg-indigo-50 p-4 rounded-lg shadow">
+                                <div>
+                                    <label className="font-medium text-indigo-800">Location:</label>
+                                    <select
+                                        value={activeFilters.location}
+                                        onChange={(e) => handleFilterChange("location", e.target.value)}
+                                        className="ml-2 px-3 py-2 border rounded"
+                                    >
+                                        {filterOptions.locations.map((option, idx) => (
+                                            <option key={idx} value={option}>
+                                                {option}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="font-medium text-indigo-800">Case Type:</label>
+                                    <select
+                                        value={activeFilters.caseType}
+                                        onChange={(e) => handleFilterChange("caseType", e.target.value)}
+                                        className="ml-2 px-3 py-2 border rounded"
+                                    >
+                                        {filterOptions.caseTypes.map((option, idx) => (
+                                            <option key={idx} value={option}>
+                                                {option}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {/* New Gender Filter */}
+                                <div>
+                                    <label className="font-medium text-indigo-800">Gender:</label>
+                                    <select
+                                        value={activeFilters.gender}
+                                        onChange={(e) => handleFilterChange("gender", e.target.value)}
+                                        className="ml-2 px-3 py-2 border rounded"
+                                    >
+                                        {filterOptions.genders.map((option, idx) => (
+                                            <option key={idx} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+                        <div className="flex gap-3 w-full relative">
+                            <Input
+                                placeholder="Enter name to search..."
+                                value={inputName}
+                                onChange={handleInputChange}
+                                className="flex-1 text-lg"
+                                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                            />
+                            <Button
+                                onClick={handleSearch}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? "Searching..." : "Search"}
+                            </Button>
+                            <VoiceSearchButton onVoiceInput={handleVoiceInput} />
+                             {noMatchFound && (
+                                 <div className="absolute left-0 mt-1 text-red-500 text-sm">
+                                     No match found for "{inputName}" with the applied filters.
+                                 </div>
+                             )}
+                        </div>
+                         {/* Suggestions List */}
+                        {inputName && (
+                            <ul className="bg-white shadow-lg mt-2 rounded-lg max-h-48 overflow-y-auto">
+                                {isSuggestionsLoading ? (
+                                    <li className="p-2 text-gray-500">Loading...</li>
+                                ) : (
+                                    nameSuggestions.map((suggestion, index) => (
+                                        <li
+                                            key={index}
+                                            className="p-2 hover:bg-indigo-50 cursor-pointer"
+                                            onClick={() => handleSuggestionClick(suggestion)}
+                                        >
+                                            {suggestion}
+                                        </li>
+                                    ))
+                                )}
+                            </ul>
+                        )}
+                    </CardHeader>
+                </Card>
+
+                {/* Add Record Form Toggle */}
+                <div className="mt-4">
+                    <Button onClick={() => setShowAddForm(!showAddForm)} className="bg-green-500 text-white">
+                        {showAddForm ? "Cancel" : "Add New Record"}
+                    </Button>
+                </div>
+
+                {/* Add Record Form */}
+                {showAddForm && (
+                    <Card className="mt-4 w-full shadow-xl border border-green-200">
+                        <CardHeader className="space-y-4">
+                            <h2 className="text-xl font-bold text-green-900">Add New Record</h2>
+                            <div className="space-y-4">
+                                <Input
+                                    placeholder="Name"
+                                    value={newRecord.name}
+                                    onChange={(e) => setNewRecord({ ...newRecord, name: e.target.value })}
+                                />
+                                <Input
+                                    placeholder="Age"
+                                    value={newRecord.age}
+                                    type="number"
+                                    onChange={(e) => setNewRecord({ ...newRecord, age: e.target.value })}
+                                />
+                                <Input
+                                    placeholder="Location"
+                                    value={newRecord.location}
+                                    onChange={(e) => setNewRecord({ ...newRecord, location: e.target.value })}
+                                />
+                                <select
+                                    value={newRecord.caseType}
+                                    onChange={(e) => setNewRecord({ ...newRecord, caseType: e.target.value })}
+                                    className="px-3 py-2 border rounded"
+                                >
+                                    <option value="">Select Case Type</option>
+                                    {filterOptions.caseTypes.map((option, idx) => (
+                                        <option key={idx} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                                {/* New Gender Select */}
+                                <select
+                                    value={newRecord.gender}
+                                    onChange={(e) => setNewRecord({ ...newRecord, gender: e.target.value })}
+                                    className="px-3 py-2 border rounded"
+                                >
+                                    <option value="">Select Gender</option>
+                                    {filterOptions.addFormGenders.map((option, idx) => (
+                                        <option key={idx} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                {/*<Input
+                  placeholder="Confidence Score (Optional)"
+                  value={newRecord.confidence}
+                  onChange={(e) => setNewRecord({ ...newRecord, confidence: e.target.value })}
+                />*/}
+                            </div>
+                            <Button onClick={handleAddRecord} className="bg-green-600 text-white mt-4">
+                                Add Record
+                            </Button>
+                        </CardHeader>
+                    </Card>
+                )}
+
+                {/* Results */}
+                {searchResults.length > 0 && (
+                    <div className="mt-6 w-full space-y-4">
+                        <div className="bg-white shadow-md p-4 rounded-lg">
+                            <table className="min-w-full text-left">
+                                <thead className="bg-indigo-100">
+                                    <tr>
+                                        <th className="px-4 py-2 text-sm font-semibold text-gray-800">Name</th>
+                                        <th className="px-4 py-2 text-sm font-semibold text-gray-800">Age</th>
+                                        <th className="px-4 py-2 text-sm font-semibold text-gray-800">Location</th>
+                                        <th className="px-4 py-2 text-sm font-semibold text-gray-800">Case Type</th>
+                                        <th className="px-4 py-2 text-sm font-semibold text-gray-800">Confidence Score</th>
+                                        <th className="px-4 py-2 text-sm font-semibold text-gray-800">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {paginatedResults.map((record, idx) => (
+                                        <tr key={idx} className="hover:bg-indigo-50">
+                                            <td className="px-4 py-2">{record.name}</td>
+                                            <td className="px-4 py-2">{record.age}</td>
+                                            <td className="px-4 py-2">{record.location}</td>
+                                            <td className="px-4 py-2">{record.casetype}</td>
+                                             <td className="px-4 py-2">
+                                                {record.confidence !== undefined && record.confidence !== null
+                                                    ? record.confidence.toFixed(2)
+                                                    : "N/A"}
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                <Button
+                                                    onClick={() => handleViewDetails(record)}
+                                                    className="bg-indigo-500 hover:bg-indigo-600 text-white"
+                                                >
+                                                    View Details
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="flex justify-between items-center mt-4">
+                            <Button
+                                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                            >
+                                Previous
+                            </Button>
+                            <span>
+                                Page {currentPage} of {totalPages}
+                            </span>
+                            <Button
+                                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Modal for Viewing Details */}
+                {isModalOpen && selectedRecord && (
+                    <ViewDetailsModal
+                        isOpen={isModalOpen}
+                        record={selectedRecord}
+                        onClose={closeModal}
+                    />
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default PoliceDashboard; 

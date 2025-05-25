@@ -1,0 +1,7 @@
+pandas
+googletrans
+rapidfuzz
+sqlalchemy
+pyphonetics
+Flask
+flask-cors
